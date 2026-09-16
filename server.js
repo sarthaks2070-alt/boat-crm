@@ -503,15 +503,31 @@ const server = http.createServer(async (req, res) => {
     // Submit Script
     if (pathname === '/api/scripts' && method === 'POST') {
       const body = await parseBody(req);
-      if (!body.campaign_id || !body.influencer_id || !body.script_text) {
-        return sendError(res, 'Campaign ID, Influencer ID, and script text are required');
+      if (!body.script_text || !body.script_text.trim()) {
+        return sendError(res, 'Script text is required');
       }
 
-      const campaign = db.prepare('SELECT * FROM campaigns WHERE id = ?').get(body.campaign_id);
-      if (!campaign) return sendError(res, 'Campaign not found', 404);
+      // Resolve campaign with fallback
+      let campaign = null;
+      if (body.campaign_id) {
+        campaign = db.prepare('SELECT * FROM campaigns WHERE id = ?').get(body.campaign_id);
+      }
+      if (!campaign) {
+        campaign = db.prepare("SELECT * FROM campaigns WHERE status = 'Active' ORDER BY created_at DESC LIMIT 1").get() ||
+                   db.prepare("SELECT * FROM campaigns ORDER BY created_at DESC LIMIT 1").get();
+      }
+      if (!campaign) return sendError(res, 'No active campaign found to attach script', 404);
 
-      const influencer = db.prepare('SELECT * FROM influencers WHERE id = ?').get(body.influencer_id);
-      if (!influencer) return sendError(res, 'Influencer not found', 404);
+      // Resolve influencer with fallback
+      let influencer = null;
+      if (body.influencer_id) {
+        influencer = db.prepare('SELECT * FROM influencers WHERE id = ?').get(body.influencer_id);
+      }
+      if (!influencer) {
+        influencer = db.prepare("SELECT * FROM influencers WHERE status != 'Rejected' ORDER BY updated_at DESC LIMIT 1").get() ||
+                     db.prepare("SELECT * FROM influencers ORDER BY updated_at DESC LIMIT 1").get();
+      }
+      if (!influencer) return sendError(res, 'No influencer found to submit script for', 404);
 
       const scriptId = 'script_' + randomUUID().substring(0, 8);
       const conceptTitle = body.concept_title || `${campaign.product_name} Showcase`;
@@ -521,44 +537,44 @@ const server = http.createServer(async (req, res) => {
       // Run AI Compliance Audit
       const auditResult = auditScript(body.script_text, campaign);
       const isApproved = auditResult.isApproved;
-      const scriptStatus = isApproved ? 'Approved' : 'Rejected';
-      const influencerStage = isApproved ? 'Script Approved' : 'Selected';
+      const scriptStatus = isApproved ? 'Approved' : 'Changes Requested';
+      const influencerStage = isApproved ? 'Script Approved' : 'Script Submitted';
 
       db.prepare(`
         INSERT INTO scripts (id, campaign_id, influencer_id, concept_title, script_text, video_format, estimated_duration_sec, status, ai_score, ai_audit_json, version)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
       `).run(
-        scriptId, body.campaign_id, body.influencer_id, conceptTitle,
+        scriptId, campaign.id, influencer.id, conceptTitle,
         body.script_text, videoFormat, estimatedDuration, scriptStatus,
         auditResult.complianceScore, JSON.stringify(auditResult)
       );
 
-      // Update influencer stage
+      // Update influencer stage in database
       db.prepare(`
         UPDATE influencers SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
-      `).run(influencerStage, body.influencer_id);
+      `).run(influencerStage, influencer.id);
 
-      // Automated Notification: Approved vs Rejected
+      // Automated Notification: Approved vs Changes Requested
       const scriptCommSubject = isApproved
         ? `boAt ${campaign.product_name} - Script Approved! 🚀`
-        : `boAt ${campaign.product_name} - Script Rejected by AI (Requirements Not Met) ⚠️`;
+        : `boAt ${campaign.product_name} - Script Review: Revisions Requested ⚠️`;
       const scriptCommBody = isApproved
         ? `Hi ${influencer.name}!\n\nAwesome work! Your script "${conceptTitle}" has satisfied all mandatory product specifications (AI Score: ${auditResult.complianceScore}/100) and is APPROVED. You are cleared for production!`
-        : `Hi ${influencer.name},\n\nYour submitted script "${conceptTitle}" has been REJECTED by our AI review because it does not meet the product requirements:\n\n${auditResult.checklist.filter(c => c.status === 'fail').map(c => '• ' + c.item + ': ' + c.detail).join('\n')}\n\nPlease revise your dialogue to include all mandatory specifications and re-submit.`;
+        : `Hi ${influencer.name},\n\nYour submitted script "${conceptTitle}" received an AI Compliance Score of ${auditResult.complianceScore}/100. Our review noted that some mandatory product specifications need attention:\n\n${auditResult.checklist.filter(c => c.status === 'fail' || c.status === 'warn').map(c => '• ' + c.item + ': ' + c.detail).join('\n')}\n\nPlease revise your dialogue to include all mandatory specifications and re-submit.`;
 
       db.prepare(`
         INSERT INTO communications (id, influencer_id, campaign_id, type, channel, subject, body, status)
         VALUES (?, ?, ?, ?, 'Email & WhatsApp', ?, ?, 'Sent')
-      `).run(randomUUID(), body.influencer_id, body.campaign_id, isApproved ? 'Script Approved' : 'Script Rejected', scriptCommSubject, scriptCommBody);
+      `).run(randomUUID(), influencer.id, campaign.id, isApproved ? 'Script Approved' : 'Script Revision Needed', scriptCommSubject, scriptCommBody);
 
-      // Log activity
+      // Log activity for Live AI Stream
       db.prepare(`
         INSERT INTO activity_logs (id, influencer_id, campaign_id, actor, action, details)
         VALUES (?, ?, ?, 'AI Engine', ?, ?)
       `).run(
-        randomUUID(), body.influencer_id, body.campaign_id,
-        isApproved ? 'Script Approved by AI' : 'Script Rejected by AI',
-        `Script "${conceptTitle}" audited. Compliance Score: ${auditResult.complianceScore}/100 (${scriptStatus}).`
+        randomUUID(), influencer.id, campaign.id,
+        isApproved ? 'Script Approved by AI (≥80)' : 'Script Submitted (Revisions Requested)',
+        `Script "${conceptTitle}" audited for ${influencer.name}. Score: ${auditResult.complianceScore}/100. Stage: ${influencerStage}.`
       );
 
       return sendJSON(res, {
@@ -566,6 +582,7 @@ const server = http.createServer(async (req, res) => {
         scriptId,
         isApproved,
         status: scriptStatus,
+        influencerStage,
         auditResult,
         message: isApproved
           ? 'Script matches all product requirements and is APPROVED!'

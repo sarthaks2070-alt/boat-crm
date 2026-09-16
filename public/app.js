@@ -62,24 +62,77 @@ const KANBAN_STAGES = [
 // Initialize on DOM load
 document.addEventListener('DOMContentLoaded', () => {
   fetchAllData();
+
+  // Background real-time synchronization every 3.5 seconds
+  setInterval(() => {
+    fetchAllData(true);
+  }, 3500);
 });
 
 // ===================================================
 // Core Data Fetching & Sync
 // ===================================================
-async function fetchAllData() {
+async function fetchAllData(isBackgroundPoll = false) {
   try {
-    await Promise.all([
-      fetchStats(),
-      fetchCampaigns(),
-      fetchInfluencers(),
-      fetchScripts(),
-      fetchCommunications(),
-      fetchAnalytics()
+    const [statsRes, campRes, infRes, scRes, commRes, anaRes] = await Promise.all([
+      fetch('/api/stats'),
+      fetch('/api/campaigns'),
+      fetch('/api/influencers'),
+      fetch('/api/scripts'),
+      fetch('/api/communications'),
+      fetch('/api/analytics')
     ]);
+
+    const [statsData, campData, infData, scData, commData, anaData] = await Promise.all([
+      statsRes.json(),
+      campRes.json(),
+      infRes.json(),
+      scRes.json(),
+      commRes.json(),
+      anaRes.json()
+    ]);
+
+    if (statsData.success) {
+      state.stats = statsData.stats;
+      state.pipelineCounts = statsData.pipelineCounts;
+      state.recentActivities = statsData.recentActivities;
+      renderStats(statsData.stats, statsData.pipelineCounts, statsData.recentActivities);
+    }
+    if (campData.success) {
+      state.campaigns = campData.campaigns;
+      renderCampaignsGrid();
+    }
+    if (infData.success) {
+      state.influencers = infData.influencers;
+      renderPipeline();
+      renderEvalCreatorSelect();
+      renderPriorityTable();
+    }
+    if (scData.success) {
+      state.scripts = scData.scripts;
+      renderScriptSelect();
+      if (state.scripts.length > 0 && !state.activeStudioScript) {
+        loadScriptIntoStudio(state.scripts[0].id);
+      }
+    }
+    if (commData.success) {
+      state.communications = commData.communications;
+      if (state.currentView === 'view-communications') renderCommunicationsTable();
+    }
+    if (anaData.success) {
+      state.analytics = anaData;
+      if (state.currentView === 'view-analytics') renderAnalyticsView();
+    }
+
+    // Update selects now that both campaigns and influencers are guaranteed present
+    renderCampaignSelects();
+    updateNavCounts();
+
   } catch (err) {
-    console.error('Error loading boAt CRM data:', err);
-    showToast('Error syncing CRM data', 'error');
+    if (!isBackgroundPoll) {
+      console.error('Error loading boAt CRM data:', err);
+      showToast('Error syncing CRM data', 'error');
+    }
   }
 }
 
@@ -87,6 +140,9 @@ async function fetchStats() {
   const res = await fetch('/api/stats');
   const data = await res.json();
   if (data.success) {
+    state.stats = data.stats;
+    state.pipelineCounts = data.pipelineCounts;
+    state.recentActivities = data.recentActivities;
     renderStats(data.stats, data.pipelineCounts, data.recentActivities);
   }
 }
@@ -110,6 +166,7 @@ async function fetchInfluencers() {
     renderPipeline();
     renderEvalCreatorSelect();
     renderPriorityTable();
+    renderCampaignSelects();
     updateNavCounts();
   }
 }
@@ -183,12 +240,28 @@ function switchView(viewId) {
   }
 
   // Refresh view specific components
-  if (viewId === 'view-pipeline') renderPipeline();
+  if (viewId === 'view-dashboard') {
+    if (state.stats) renderStats(state.stats, state.pipelineCounts, state.recentActivities);
+    renderPriorityTable();
+  }
+  if (viewId === 'view-pipeline') {
+    renderPipeline();
+  }
+  if (viewId === 'view-scripts') {
+    renderScriptSelect();
+    if (state.scripts.length > 0) {
+      const activeId = state.activeStudioScript?.id || state.scripts[0].id;
+      loadScriptIntoStudio(activeId);
+    }
+  }
   if (viewId === 'view-ai-eval' && state.influencers.length > 0) {
+    renderEvalCreatorSelect();
     const sel = document.getElementById('evalCreatorSelect');
     if (sel && sel.value) loadCreatorIntoEvalStudio(sel.value);
     else if (state.influencers[0]) loadCreatorIntoEvalStudio(state.influencers[0].id);
   }
+  if (viewId === 'view-campaigns') renderCampaignsGrid();
+  if (viewId === 'view-communications') renderCommunicationsTable();
   if (viewId === 'view-analytics') renderAnalyticsView();
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -866,34 +939,51 @@ async function decideScript(decision) {
 function renderCampaignSelects() {
   const globalSel = document.getElementById('globalCampaignSelect');
   if (globalSel) {
-    const current = globalSel.value;
+    const current = globalSel.value || 'all';
     globalSel.innerHTML = '<option value="all">🔥 All Active Campaigns</option>' +
       state.campaigns.map(c => `<option value="${c.id}" ${c.id === current ? 'selected' : ''}>${escapeHtml(c.title)}</option>`).join('');
+    if (current) globalSel.value = current;
   }
 
   const creatorSel = document.getElementById('creatorActiveCampaignSelect');
   if (creatorSel) {
+    const currentCamp = creatorSel.value;
     creatorSel.innerHTML = state.campaigns.map(c => `
-      <option value="${c.id}">${escapeHtml(c.title)} (${escapeHtml(c.product_name)})</option>
+      <option value="${c.id}" ${c.id === currentCamp ? 'selected' : ''}>${escapeHtml(c.title)} (${escapeHtml(c.product_name)})</option>
     `).join('');
-    if (state.campaigns.length > 0) onCreatorBriefChange(state.campaigns[0].id);
+    if (currentCamp && state.campaigns.some(c => c.id === currentCamp)) {
+      creatorSel.value = currentCamp;
+      onCreatorBriefChange(currentCamp);
+    } else if (state.campaigns.length > 0) {
+      creatorSel.value = state.campaigns[0].id;
+      onCreatorBriefChange(state.campaigns[0].id);
+    }
   }
 
   const creatorInfSel = document.getElementById('creatorActiveInfluencerSelect');
   if (creatorInfSel) {
+    const currentInf = creatorInfSel.value || state.lastAcceptedInfluencerId;
     const acceptedOnly = state.influencers.filter(i => 
       i.status !== 'Rejected' && (i.suitability_score >= 80 || i.status === 'Selected' || i.status === 'Brief Shared' || i.status === 'Script Submitted' || i.status === 'Script Approved' || i.status === 'Content Created' || i.status === 'Published' || i.status === 'Campaign Completed')
     );
     creatorInfSel.innerHTML = acceptedOnly.map(i => `
-      <option value="${i.id}">${escapeHtml(i.name)} (@${escapeHtml(i.instagram_handle)}) - Approved</option>
+      <option value="${i.id}" ${i.id === currentInf ? 'selected' : ''}>${escapeHtml(i.name)} (@${escapeHtml(i.instagram_handle)}) - Approved</option>
     `).join('');
+
+    if (currentInf && acceptedOnly.some(i => i.id === currentInf)) {
+      creatorInfSel.value = currentInf;
+    } else if (acceptedOnly.length > 0) {
+      creatorInfSel.value = acceptedOnly[0].id;
+    }
   }
 
   const msgRecSel = document.getElementById('msgRecipientSelect');
   if (msgRecSel) {
+    const curMsgVal = msgRecSel.value;
     msgRecSel.innerHTML = state.influencers.map(i => `
-      <option value="${i.id}">${escapeHtml(i.name)} (@${escapeHtml(i.instagram_handle)})</option>
+      <option value="${i.id}" ${i.id === curMsgVal ? 'selected' : ''}>${escapeHtml(i.name)} (@${escapeHtml(i.instagram_handle)})</option>
     `).join('');
+    if (curMsgVal) msgRecSel.value = curMsgVal;
   }
 }
 
@@ -1135,16 +1225,16 @@ async function handlePublicOnboardSubmit(event) {
   btn.textContent = '⏳ Analyzing Profile with AI...';
 
   const payload = {
-    name: document.getElementById('formName').value,
-    instagram_handle: document.getElementById('formHandle').value,
-    email: document.getElementById('formEmail').value,
-    phone: document.getElementById('formPhone').value,
+    name: document.getElementById('formName').value.trim(),
+    instagram_handle: document.getElementById('formHandle').value.trim(),
+    email: document.getElementById('formEmail').value.trim(),
+    phone: document.getElementById('formPhone').value.trim(),
     follower_count: document.getElementById('formFollowers').value,
     engagement_rate: document.getElementById('formER').value,
     category: document.getElementById('formCategory').value,
     commercial_rate: 0,
-    preferred_products: document.getElementById('formPreferredProducts').value,
-    previous_collaborations: document.getElementById('formPastCollabs').value
+    preferred_products: document.getElementById('formPreferredProducts').value.trim(),
+    previous_collaborations: document.getElementById('formPastCollabs').value.trim()
   };
 
   try {
@@ -1157,22 +1247,29 @@ async function handlePublicOnboardSubmit(event) {
     if (data.success) {
       const isAccepted = data.evaluation.isSelected || data.evaluation.overallScore >= 80;
       renderApplicationAiResult(data.evaluation, payload.name, data.influencerId);
+
+      if (isAccepted) {
+        state.lastAcceptedInfluencerId = data.influencerId;
+      } else {
+        state.lastAcceptedInfluencerId = null;
+      }
+
+      // Fetch and sync all CRM data immediately
       await fetchAllData();
 
       const wsSection = document.getElementById('creatorWorkspaceSection');
       const lockedBanner = document.getElementById('creatorWorkspaceLockedBanner');
 
       if (isAccepted) {
-        state.lastAcceptedInfluencerId = data.influencerId;
-        if (wsSection) wsSection.style.display = 'block';
-        if (lockedBanner) lockedBanner.style.display = 'none';
-
+        renderCampaignSelects();
         const sel = document.getElementById('creatorActiveInfluencerSelect');
         if (sel) sel.value = data.influencerId;
 
+        if (wsSection) wsSection.style.display = 'block';
+        if (lockedBanner) lockedBanner.style.display = 'none';
+
         showToast('🎉 Application ACCEPTED by AI (Score ≥ 80)! Collaboration Workspace Unlocked.', 'success');
       } else {
-        state.lastAcceptedInfluencerId = null;
         if (wsSection) wsSection.style.display = 'none';
         if (lockedBanner) {
           lockedBanner.style.display = 'block';
@@ -1196,6 +1293,7 @@ async function handlePublicOnboardSubmit(event) {
       showToast(data.error || 'Submission failed', 'error');
     }
   } catch (err) {
+    console.error('Network error during application submission:', err);
     showToast('Network error during application submission', 'error');
   } finally {
     btn.disabled = false;
@@ -1258,12 +1356,14 @@ function openCreatorWorkspaceSection(influencerId = null) {
 
   if (targetId) {
     const inf = state.influencers.find(i => i.id === targetId);
-    const isAccepted = inf && inf.status !== 'Rejected' && (inf.suitability_score >= 80 || inf.status === 'Selected' || inf.status === 'Brief Shared' || inf.status === 'Script Submitted' || inf.status === 'Script Approved' || inf.status === 'Content Created' || inf.status === 'Published' || inf.status === 'Campaign Completed');
+    const isAccepted = (targetId === state.lastAcceptedInfluencerId) ||
+      (inf && inf.status !== 'Rejected' && (inf.suitability_score >= 80 || inf.status === 'Selected' || inf.status === 'Brief Shared' || inf.status === 'Script Submitted' || inf.status === 'Script Approved' || inf.status === 'Content Created' || inf.status === 'Published' || inf.status === 'Campaign Completed'));
 
     if (isAccepted) {
       if (section) section.style.display = 'block';
       if (lockedBanner) lockedBanner.style.display = 'none';
 
+      renderCampaignSelects();
       const sel = document.getElementById('creatorActiveInfluencerSelect');
       if (sel) sel.value = targetId;
 
@@ -1376,14 +1476,39 @@ function testScriptRealtimeAi() {
 }
 
 async function submitCreatorScriptDraft() {
-  const campId = document.getElementById('creatorActiveCampaignSelect').value;
-  const infId = document.getElementById('creatorActiveInfluencerSelect').value;
-  const concept = document.getElementById('creatorConceptTitle').value || 'boAt Video Showcase';
-  const text = document.getElementById('creatorScriptInput').value;
+  const campId = document.getElementById('creatorActiveCampaignSelect')?.value || state.campaigns[0]?.id;
+  let infId = document.getElementById('creatorActiveInfluencerSelect')?.value;
 
-  if (!text || text.trim().length === 0) {
+  // Robust fallback if select element didn't have value selected
+  if (!infId && state.lastAcceptedInfluencerId) {
+    infId = state.lastAcceptedInfluencerId;
+  }
+  if (!infId) {
+    const acceptedOnly = state.influencers.filter(i => 
+      i.status !== 'Rejected' && (i.suitability_score >= 80 || i.status === 'Selected' || i.status === 'Brief Shared' || i.status === 'Script Submitted' || i.status === 'Script Approved')
+    );
+    if (acceptedOnly.length > 0) {
+      infId = acceptedOnly[0].id;
+    }
+  }
+
+  const concept = document.getElementById('creatorConceptTitle')?.value?.trim() || 'boAt Video Showcase';
+  const text = document.getElementById('creatorScriptInput')?.value?.trim();
+
+  if (!infId) {
+    showToast('Please submit or select an approved creator profile first', 'error');
+    return;
+  }
+
+  if (!text || text.length === 0) {
     showToast('Please provide script text before submitting', 'error');
     return;
+  }
+
+  const submitBtn = document.querySelector('#creatorWorkspaceSection button.btn-primary');
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = '⏳ Auditing & Submitting Script...';
   }
 
   try {
@@ -1400,15 +1525,38 @@ async function submitCreatorScriptDraft() {
     });
     const data = await res.json();
     if (data.success) {
-      showToast('Script submitted! AI Audit Score: ' + data.auditResult.complianceScore + '/100', 'success');
+      const isApproved = data.isApproved;
+      const score = data.auditResult?.complianceScore || 0;
+      showToast(
+        isApproved 
+          ? `🎉 Script APPROVED by AI (${score}/100)! Live in boAt Marketing Pipeline.` 
+          : `⚠️ Script Submitted (${score}/100). Changes requested by AI. Sent to Marketing Pipeline.`,
+        isApproved ? 'success' : 'warning'
+      );
       document.getElementById('creatorScriptInput').value = '';
       document.getElementById('creatorConceptTitle').value = '';
-      document.getElementById('creatorRealtimeAuditResult').style.display = 'none';
-      fetchAllData();
-      switchView('view-scripts');
+      const auditResultBox = document.getElementById('creatorRealtimeAuditResult');
+      if (auditResultBox) auditResultBox.style.display = 'none';
+
+      // Re-fetch all data to ensure pipeline, scripts, and stats are 100% updated in real-time
+      await fetchAllData();
+      if (data.scriptId) {
+        loadScriptIntoStudio(data.scriptId);
+      }
+      
+      // Automatically switch to pipeline view so user sees creator card update live
+      switchView('view-pipeline');
+    } else {
+      showToast(data.error || 'Failed to submit script', 'error');
     }
   } catch (err) {
-    showToast('Failed to submit script', 'error');
+    console.error('Error submitting script:', err);
+    showToast('Failed to submit script. Please check connection.', 'error');
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = '🚀 Submit Script to boAt Marketing Team';
+    }
   }
 }
 
