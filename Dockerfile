@@ -7,7 +7,6 @@ COPY db.js ./
 COPY ai-engine.js ./
 COPY server.js ./
 COPY public ./public
-COPY data ./data
 
 ENV PORT=3000
 EXPOSE 3000
