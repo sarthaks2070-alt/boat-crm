@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>boAt | AI-Powered Influencer CRM & Campaign Automation</title>
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23FF1E2D'/><path d='M50 20 L75 75 L50 62 L25 75 Z' fill='white'/></svg>">
+</head>
+<body>
+
+  <!-- App Header -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand-section">
+        <a href="#" class="brand-logo" onclick="switchView('view-dashboard')">
+          <div class="logo-badge">⚓</div>
+          <div class="logo-text">
+            <div class="logo-title">boAt <span>CRM</span></div>
+            <div class="logo-subtitle">Influencer AI Automation</div>
+          </div>
+        </a>
+        <div class="tagline-badge">
+          <span>⚡</span> #DoWhatFloatsYourBoAt
+        </div>
+      </div>
+
+      <div class="header-controls">
+        <!-- Global Campaign Switcher -->
+        <div class="campaign-select-wrap">
+          <label for="globalCampaignSelect">Campaign:</label>
+          <select id="globalCampaignSelect" onchange="onGlobalCampaignChange(this.value)">
+            <option value="all">🔥 All Active Campaigns</option>
+          </select>
+        </div>
+
+        <!-- Portal Role Switcher -->
+        <div class="portal-switch">
+          <button class="switch-btn active" id="btnRoleAdmin" onclick="setPortalRole('admin')">
+            🛡️ boAt Marketing CRM
+          </button>
+          <button class="switch-btn" id="btnRoleCreator" onclick="setPortalRole('creator')">
+            ✨ Influencer Portal
+          </button>
+        </div>
+
+        <!-- Seed Data Action -->
+        <button class="btn btn-secondary btn-sm" onclick="reseedDatabase()" title="Reset & Re-seed realistic boAt creator data">
+          🔄 Re-seed Data
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Navigation Tabs (Admin Mode) -->
+  <nav class="app-nav" id="adminNav">
+    <div class="nav-container">
+      <button class="nav-tab active" data-view="view-dashboard" onclick="switchView('view-dashboard')">
+        📊 Overview & KPIs
+      </button>
+      <button class="nav-tab" data-view="view-pipeline" onclick="switchView('view-pipeline')">
+        🔄 Influencer Pipeline <span class="badge" id="navPipelineCount">12</span>
+      </button>
+      <button class="nav-tab" data-view="view-ai-eval" onclick="switchView('view-ai-eval')">
+        🧠 AI Evaluation Studio
+      </button>
+      <button class="nav-tab" data-view="view-scripts" onclick="switchView('view-scripts')">
+        📝 AI Script Review <span class="badge" id="navScriptsCount">2</span>
+      </button>
+      <button class="nav-tab" data-view="view-campaigns" onclick="switchView('view-campaigns')">
+        🎯 Campaigns & Briefs <span class="badge" id="navCampaignsCount">4</span>
+      </button>
+      <button class="nav-tab" data-view="view-communications" onclick="switchView('view-communications')">
+        💬 Automated Comms
+      </button>
+      <button class="nav-tab" data-view="view-analytics" onclick="switchView('view-analytics')">
+        📈 Performance & ROI
+      </button>
+    </div>
+  </nav>
+
+  <!-- Main Content Area -->
+  <main class="app-main">
+
+    <!-- ========================================== -->
+    <!-- VIEW 1: EXECUTIVE DASHBOARD & KPIS         -->
+    <!-- ========================================== -->
+    <section id="view-dashboard" class="view-panel active">
+      <div class="view-header-row">
+        <div class="view-title-block">
+          <h1>⚡ Influencer Marketing Command Center</h1>
+          <p>Real-time AI evaluation, content workflow, and performance tracking across all boAt product launches.</p>
+        </div>
+        <div class="view-actions">
+          <button class="btn btn-primary" onclick="openOnboardModal()">
+            ➕ Onboard Influencer
+          </button>
+          <button class="btn btn-secondary" onclick="switchView('view-scripts')">
+            📝 Review Pending Scripts
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI Summary Cards -->
+      <div class="kpi-grid">
+        <div class="kpi-card" style="--accent-color: #FF1E2D;">
+          <div class="kpi-header">
+            <span>Total Influencers</span>
+            <div class="kpi-icon">👥</div>
+          </div>
+          <div class="kpi-value" id="kpiTotalInfluencers">12</div>
+          <div class="kpi-meta"><span class="trend-up">↑ 4 new</span> applied this week</div>
+        </div>
+
+        <div class="kpi-card" style="--accent-color: #00F0FF;">
+          <div class="kpi-header">
+            <span>Live Campaign Reach</span>
+            <div class="kpi-icon">📡</div>
+          </div>
+          <div class="kpi-value" id="kpiTotalReach">505.0K</div>
+          <div class="kpi-meta">596K verified video views</div>
+        </div>
+
+        <div class="kpi-card" style="--accent-color: #10B981;">
+          <div class="kpi-header">
+            <span>Avg Cost Per Eng. (CPE)</span>
+            <div class="kpi-icon">💰</div>
+          </div>
+          <div class="kpi-value" id="kpiAvgCpe">₹0.25</div>
+          <div class="kpi-meta"><span class="trend-up">38% lower</span> than industry avg</div>
+        </div>
+
+        <div class="kpi-card" style="--accent-color: #A855F7;">
+          <div class="kpi-header">
+            <span>Avg boAt Fit Score</span>
+            <div class="kpi-icon">🧠</div>
+          </div>
+          <div class="kpi-value" id="kpiAvgScore">87<span style="font-size:1.1rem; color:var(--text-muted);">/100</span></div>
+          <div class="kpi-meta">8 Platinum & Gold Matches</div>
+        </div>
+
+        <div class="kpi-card" style="--accent-color: #F59E0B;">
+          <div class="kpi-header">
+            <span>Scripts In Review</span>
+            <div class="kpi-icon">📝</div>
+          </div>
+          <div class="kpi-value" id="kpiScriptsReview">2</div>
+          <div class="kpi-meta">1 pending team approval</div>
+        </div>
+      </div>
+
+      <!-- Pipeline Funnel Bar -->
+      <div class="funnel-card">
+        <div class="funnel-title">
+          <span>🚀 Influencer Collaboration Lifecycle Funnel</span>
+          <button class="btn btn-secondary btn-sm" onclick="switchView('view-pipeline')">View Full Pipeline →</button>
+        </div>
+        <div class="funnel-steps" id="funnelStepsContainer">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+
+      <!-- Two-column Layout: Quick Pipeline + Activity Feed -->
+      <div class="dash-columns">
+        <div class="card-panel">
+          <div class="card-panel-title">
+            <span>⭐ High-Priority boAt Creators (Ready for Action)</span>
+            <button class="btn btn-secondary btn-sm" onclick="switchView('view-pipeline')">View All (12)</button>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Influencer</th>
+                  <th>Category</th>
+                  <th>Followers</th>
+                  <th>Eng. Rate</th>
+                  <th>boAt Fit Score</th>
+                  <th>Current Stage</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="dashPriorityTableBody">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- AI Activity Stream -->
+        <div class="card-panel">
+          <div class="card-panel-title">
+            <span>🔔 Live AI & Workflow Log</span>
+          </div>
+          <div class="activity-list" id="dashActivityList">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- VIEW 2: INFLUENCER PIPELINE (KANBAN/TABLE) -->
+    <!-- ========================================== -->
+    <section id="view-pipeline" class="view-panel">
+      <div class="view-header-row">
+        <div class="view-title-block">
+          <h1>🔄 Influencer Collaboration Pipeline</h1>
+          <p>Track every creator from initial application through AI screening, negotiation, script approval, and publishing.</p>
+        </div>
+        <div class="view-actions">
+          <button class="btn btn-primary" onclick="openOnboardModal()">
+            ➕ Onboard Influencer
+          </button>
+        </div>
+      </div>
+
+      <!-- Toolbar: Filters & View Mode -->
+      <div class="toolbar">
+        <div class="toolbar-filters">
+          <div class="search-input-wrap">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="pipelineSearch" placeholder="Search by name, @handle, niche..." oninput="filterInfluencers()">
+          </div>
+
+          <select class="filter-select" id="filterCategory" onchange="filterInfluencers()">
+            <option value="All">All Categories</option>
+            <option value="Tech">Tech Reviews</option>
+            <option value="Fitness">Fitness & Health</option>
+            <option value="Gaming">Gaming & Esports</option>
+            <option value="Lifestyle">Fashion & Lifestyle</option>
+            <option value="Music">Music & Audio</option>
+            <option value="College">College & Youth</option>
+          </select>
+
+          <select class="filter-select" id="filterTier" onchange="filterInfluencers()">
+            <option value="All">All Tiers</option>
+            <option value="Macro">Macro (500K+)</option>
+            <option value="Mid-Tier">Mid-Tier (100K-500K)</option>
+            <option value="Micro">Micro (50K-100K)</option>
+            <option value="Nano">Nano (<50K)</option>
+          </select>
+
+          <select class="filter-select" id="filterMinScore" onchange="filterInfluencers()">
+            <option value="0">All AI Scores</option>
+            <option value="90">Platinum Match (90+)</option>
+            <option value="80">Gold Match (80+)</option>
+            <option value="65">Silver Match (65+)</option>
+          </select>
+        </div>
+
+        <div class="view-toggle-btns">
+          <button class="toggle-btn active" id="btnViewKanban" onclick="setPipelineViewMode('kanban')" title="Kanban View">
+            📋 Kanban
+          </button>
+          <button class="toggle-btn" id="btnViewTable" onclick="setPipelineViewMode('table')" title="Table View">
+            📑 Table
+          </button>
+        </div>
+      </div>
+
+      <!-- Kanban Board Container -->
+      <div id="pipelineKanban" class="kanban-board">
+        <!-- Columns dynamically rendered -->
+      </div>
+
+      <!-- Table View Container -->
+      <div id="pipelineTable" class="table-wrap" style="display: none;">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Influencer</th>
+              <th>Category</th>
+              <th>Followers</th>
+              <th>ER %</th>
+              <th>Authenticity / Bot Risk</th>
+              <th>boAt Fit Score</th>
+              <th>Stage</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="pipelineTableBody">
+            <!-- Dynamically populated -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- VIEW 3: AI EVALUATION STUDIO               -->
+    <!-- ========================================== -->
+    <section id="view-ai-eval" class="view-panel">
+      <div class="view-header-row">
+        <div class="view-title-block">
+          <h1>🧠 AI Influencer Evaluation Studio</h1>
+          <p>Deep multi-vector analysis: Audience relevance, brand-category fit, bot risk verification, and predicted CPE.</p>
+        </div>
+        <div class="view-actions">
+          <select class="filter-select" id="evalCreatorSelect" onchange="loadCreatorIntoEvalStudio(this.value)">
+            <option value="">Select an Influencer to inspect...</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="evalStudioContent">
+        <!-- Populated dynamically with rich radar parameters, strengths, drawbacks, product fit -->
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- VIEW 4: AI SCRIPT REVIEW & APPROVAL STUDIO -->
+    <!-- ========================================== -->
+    <section id="view-scripts" class="view-panel">
+      <div class="view-header-row">
+        <div class="view-title-block">
+          <h1>📝 AI-Assisted Script Review & Compliance Studio</h1>
+          <p>Automated scanning against boAt mandatory specs, energetic Gen-Z voice, and misleading claim detection.</p>
+        </div>
+        <div class="view-actions">
+          <select class="filter-select" id="scriptSelect" onchange="loadScriptIntoStudio(this.value)">
+            <!-- Populated dynamically -->
+          </select>
+          <button class="btn btn-secondary btn-sm" onclick="triggerScriptAiAudit()">
+            ⚡ Re-Audit with AI
+          </button>
+        </div>
+      </div>
+
+      <div class="script-studio-grid" id="scriptStudioContainer">
+        <!-- Left: Script Text Editor -->
+        <div class="script-editor-card">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 id="scriptStudioConceptTitle" style="color: #FFF; font-size: 1.05rem;">Script Concept</h3>
+            <span class="status-pill status-script-submitted" id="scriptStudioStatusBadge">Submitted</span>
+          </div>
+
+          <div style="font-size: 0.82rem; color: var(--text-secondary); display: flex; gap: 1rem; flex-wrap: wrap;">
+            <span>Creator: <strong id="scriptStudioCreatorName" style="color: #FFF;">-</strong></span>
+            <span>Campaign: <strong id="scriptStudioCampaignTitle" style="color: #FFF;">-</strong></span>
+            <span>Format: <strong id="scriptStudioFormat" style="color: #FFF;">Instagram Reel</strong></span>
+          </div>
+
+          <textarea id="scriptStudioTextarea" class="script-textarea" placeholder="Enter script dialogue and scene visual directions..."></textarea>
+
+          <!-- Marketing Team Decision Action Bar -->
+          <div style="background: var(--boat-surface); border: 1px solid var(--boat-border); border-radius: var(--radius-md); padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem;">
+            <div style="font-size: 0.85rem; font-weight: 700; color: #FFF;">Marketing Team Approval Action</div>
+            <textarea id="teamFeedbackInput" class="form-input" style="height: 60px; resize: none;" placeholder="Add feedback or notes for the creator..."></textarea>
+            <div style="display: flex; gap: 0.75rem; justify-content: flex-end;">
+              <button class="btn btn-danger btn-sm" onclick="decideScript('Rejected')">
+                ❌ Reject Concept
+              </button>
+              <button class="btn btn-warning btn-sm" onclick="decideScript('Changes Requested')">
+                📝 Request Revisions
+              </button>
+              <button class="btn btn-success btn-sm" onclick="decideScript('Approved')">
+                ✅ Approve for Production
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: AI Compliance Audit Report -->
+        <div class="script-editor-card" id="scriptAuditReportCard">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- VIEW 5: CAMPAIGNS & PRODUCT BRIEFS         -->
+    <!-- ========================================== -->
+    <section id="view-campaigns" class="view-panel">
+      <div class="view-header-row">
+        <div class="view-title-block">
+          <h1>🎯 boAt Campaigns & Creative Briefs</h1>
+          <p>Manage promotional campaign objectives, key product specifications, mandatory communication points, and dos & don'ts.</p>
+        </div>
+        <div class="view-actions">
+          <button class="btn btn-primary" onclick="openNewCampaignModal()">
+            ➕ Create boAt Campaign
+          </button>
+        </div>
+      </div>
+
+      <div class="campaigns-grid" id="campaignsGridContainer">
+        <!-- Dynamically rendered -->
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- VIEW 6: AUTOMATED COMMUNICATIONS CENTER    -->
+    <!-- ========================================== -->
+    <section id="view-communications" class="view-panel">
+      <div class="view-header-row">
+        <div class="view-title-block">
+          <h1>💬 Automated Communication & Notifications</h1>
+          <p>Centralized dispatch engine replacing chaotic WhatsApp & email chains with instant event-driven messaging.</p>
+        </div>
+        <div class="view-actions">
+          <button class="btn btn-primary" onclick="openCustomMessageModal()">
+            ✉️ Send Custom Outreach
+          </button>
+        </div>
+      </div>
+
+      <!-- Automation Triggers Banner -->
+      <div style="background: var(--boat-surface-card); border: 1px solid var(--boat-border); border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1.5rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem;">
+        <div style="display: flex; gap: 0.75rem; align-items: center;">
+          <div style="width: 38px; height: 38px; border-radius: 8px; background: rgba(16, 185, 129, 0.15); color: var(--neon-green); display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">⚡</div>
+          <div>
+            <div style="font-size: 0.85rem; font-weight: 700; color: #FFF;">Onboarding Confirmation</div>
+            <div style="font-size: 0.75rem; color: var(--text-secondary);">Instant email sent on application submit</div>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 0.75rem; align-items: center;">
+          <div style="width: 38px; height: 38px; border-radius: 8px; background: rgba(0, 240, 255, 0.15); color: var(--neon-cyan); display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">📋</div>
+          <div>
+            <div style="font-size: 0.85rem; font-weight: 700; color: #FFF;">Brief Delivery Automation</div>
+            <div style="font-size: 0.75rem; color: var(--text-secondary);">Dispatched upon shortlisting creator</div>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 0.75rem; align-items: center;">
+          <div style="width: 38px; height: 38px; border-radius: 8px; background: rgba(245, 158, 11, 0.15); color: var(--neon-amber); display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">📝</div>
+          <div>
+            <div style="font-size: 0.85rem; font-weight: 700; color: #FFF;">Revision & Approval Alerts</div>
+            <div style="font-size: 0.75rem; color: var(--text-secondary);">Real-time feedback triggered to creator</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dispatched Message Logs Table -->
+      <div class="card-panel">
+        <div class="card-panel-title">
+          <span>📨 Dispatched Communications Log</span>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Influencer</th>
+                <th>Message Type</th>
+                <th>Channel</th>
+                <th>Subject</th>
+                <th>Preview</th>
+                <th>Sent Date</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="commsTableBody">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- VIEW 7: PERFORMANCE & ROI ANALYTICS        -->
+    <!-- ========================================== -->
+    <section id="view-analytics" class="view-panel">
+      <div class="view-header-row">
+        <div class="view-title-block">
+          <h1>📈 Post-Campaign Performance & ROI Analytics</h1>
+          <p>Measure verified views, engagement rates, Cost Per Engagement (CPE), and AI-generated campaign learnings.</p>
+        </div>
+      </div>
+
+      <div id="analyticsContainer">
+        <!-- Dynamically rendered performance stats, charts, and AI strategic insights -->
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- VIEW 8: PUBLIC INFLUENCER PORTAL           -->
+    <!-- ========================================== -->
+    <section id="view-creator-portal" class="view-panel">
+      <div class="public-hero-section">
+        <div class="hero-tag">⚓ boAt Creator Tribe Collabs</div>
+        <h1 class="hero-heading">Create The Next Viral Wave With <span>boAt</span></h1>
+        <p class="hero-subtext">
+          Join India's leading audio and wearable brand. Submit your profile, receive campaign briefs, get instant AI feedback on your video scripts, and get paid directly.
+        </p>
+
+        <div style="display: flex; gap: 1rem; justify-content: center;">
+          <a href="#creatorApplicationCard" class="btn btn-primary">
+            Apply to Campaign Now
+          </a>
+          <button class="btn btn-secondary" onclick="openCreatorWorkspaceSection()">
+            View My Collaboration Workspace
+          </button>
+        </div>
+      </div>
+
+      <!-- Public Influencer Application Form -->
+      <div class="onboarding-form-card" id="creatorApplicationCard">
+        <h2 style="font-size: 1.35rem; font-weight: 800; color: #FFF; margin-bottom: 0.35rem;">Official boAt Campaign Application</h2>
+        <div style="background: rgba(255, 30, 45, 0.08); border: 1px solid rgba(255, 30, 45, 0.25); border-radius: var(--radius-md); padding: 0.85rem 1rem; margin-bottom: 1.5rem; font-size: 0.82rem; color: var(--text-secondary); line-height: 1.5;">
+          <strong style="color: #FFF; display: block; margin-bottom: 0.25rem;">🤖 AI Shortlisting Criteria (Score ≥ 80 to Qualify):</strong>
+          • <strong>Profile Genuineness (30%)</strong>: Inauthentic / bot engagement is automatically rejected.<br>
+          • <strong>boAt Vibe & Community Synergy (35%)</strong>: Alignment with boAt youth lifestyle, bass audio, gaming & fitness.<br>
+          • <strong>Engagement & Retention (20%)</strong>: Real interaction rate and audience resonance.<br>
+          • <strong>Youth Demographics (15%)</strong>: Concentrated 18–28 age bracket.<br>
+          <span style="color: var(--neon-green); font-weight: 700;">★ Candidates scoring 80/100 or above are automatically Selected.</span>
+        </div>
+
+        <form id="publicOnboardForm" onsubmit="handlePublicOnboardSubmit(event)">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Full Name *</label>
+              <input type="text" class="form-input" id="formName" required placeholder="e.g. Aryan Sehgal">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Instagram Handle * (without @)</label>
+              <input type="text" class="form-input" id="formHandle" required placeholder="e.g. aryan_vibes">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Email Address *</label>
+              <input type="email" class="form-input" id="formEmail" required placeholder="aryan@creator.com">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">WhatsApp / Phone *</label>
+              <input type="text" class="form-input" id="formPhone" required placeholder="+91 98765 43210">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Follower Count *</label>
+              <input type="number" class="form-input" id="formFollowers" required placeholder="e.g. 150000">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Engagement Rate (%) *</label>
+              <input type="number" step="0.1" class="form-input" id="formER" required placeholder="e.g. 5.2">
+            </div>
+
+            <div class="form-group full-width">
+              <label class="form-label">Primary Content Category *</label>
+              <select class="form-select" id="formCategory" required>
+                <option value="Tech Reviews">Tech & Gadgets (boAt Audio, ANC & Tech)</option>
+                <option value="Fitness & Health">Fitness & Sports (Smartwatches & Rugged Audio)</option>
+                <option value="Gaming">Gaming & Esports (Immortal Gaming Audio)</option>
+                <option value="Music & Audio">Music & Sound (Signature Bass & Outdoor Speakers)</option>
+                <option value="Fashion & Lifestyle">Fashion & Streetwear (Lifestyle Wearables)</option>
+                <option value="College & Youth">College & Campus Vibes (Everyday Wireless)</option>
+                <option value="Travel & Outdoors">Travel & Adventure</option>
+              </select>
+            </div>
+
+            <div class="form-group full-width">
+              <label class="form-label">Preferred boAt Products</label>
+              <input type="text" class="form-input" id="formPreferredProducts" placeholder="e.g. Nirvana Ion ANC, Wave Pro Smartwatch, Stone 1500">
+            </div>
+
+            <div class="form-group full-width">
+              <label class="form-label">Past Brand Collaborations & Content Link</label>
+              <textarea class="form-textarea" id="formPastCollabs" style="height: 70px;" placeholder="Brands you've worked with and link to your best reel..."></textarea>
+            </div>
+          </div>
+
+          <div style="margin-top: 1.5rem; display: flex; justify-content: flex-end;">
+            <button type="submit" class="btn btn-primary" id="btnSubmitApplication" style="width: 100%;">
+              ⚡ Submit Application & Run Instant AI Match
+            </button>
+          </div>
+        </form>
+
+        <!-- Live Instant AI Feedback Result Box -->
+        <div id="applicationAiResult" style="display: none; margin-top: 1.5rem;">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+
+      <!-- Locked Workspace Placeholder Notice (Shown before AI accepts profile) -->
+      <div id="creatorWorkspaceLockedBanner" style="max-width: 900px; margin: 2rem auto; background: var(--boat-surface-card); border: 1px dashed var(--boat-border); border-radius: var(--radius-lg); padding: 2rem 1.5rem; text-align: center;">
+        <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">🔒</div>
+        <h3 style="color: #FFF; font-size: 1.15rem; font-weight: 700; margin-bottom: 0.35rem;">
+          Creator Collaboration Workspace &amp; Script Submitter Locked
+        </h3>
+        <p style="color: var(--text-secondary); font-size: 0.85rem; max-width: 550px; margin: 0 auto 1.25rem auto; line-height: 1.5;">
+          This workspace and video script submission area is exclusive to approved boAt creators. 
+          Fill out the application form above—once our AI evaluates and <strong>Accepts</strong> your profile (Score ≥ 80), your Collaboration Workspace will unlock immediately!
+        </p>
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('creatorApplicationCard').scrollIntoView({behavior:'smooth'})">
+          ↑ Complete Application Form Above
+        </button>
+      </div>
+
+      <!-- Creator Collaboration Workspace (Visible ONLY after AI accepts profile) -->
+      <div class="card-panel" id="creatorWorkspaceSection" style="max-width: 900px; margin: 2rem auto; display: none;">
+        <div class="card-panel-title" style="display:flex; justify-content:space-between; align-items:center;">
+          <span>🎬 Creator Collaboration Workspace & Script Submitter</span>
+          <span class="status-pill status-selected" style="font-size:0.75rem;">✅ AI Accepted Creator</span>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+          <div>
+            <label class="form-label">Select Active Campaign Brief</label>
+            <select class="form-select" id="creatorActiveCampaignSelect" onchange="onCreatorBriefChange(this.value)" style="width: 100%; margin-top: 0.35rem;">
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Acting As Creator</label>
+            <select class="form-select" id="creatorActiveInfluencerSelect" style="width: 100%; margin-top: 0.35rem;">
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+        </div>
+
+        <!-- Active Brief Box -->
+        <div id="creatorBriefDisplayBox" style="background: var(--boat-surface); border: 1px solid var(--boat-border); border-radius: var(--radius-md); padding: 1.25rem; margin-bottom: 1.5rem;">
+          <!-- Brief content populated -->
+        </div>
+
+        <!-- Script Drafting Area with Real-time AI Scan -->
+        <div style="display: flex; flex-direction: column; gap: 1rem;">
+          <div class="form-group">
+            <label class="form-label">Video Concept Title</label>
+            <input type="text" class="form-input" id="creatorConceptTitle" placeholder="e.g. Commute Noise Cancelling Test">
+          </div>
+
+          <div class="form-group">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <label class="form-label">Video Script & Scene Breakdown</label>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="testScriptRealtimeAi()">
+                ⚡ Run Live AI Pre-Check
+              </button>
+            </div>
+            <textarea class="form-textarea" id="creatorScriptInput" style="height: 200px; font-family: monospace;" placeholder="Draft your video dialogue and visual cues here..."></textarea>
+          </div>
+
+          <!-- Real-time AI Pre-Check Output -->
+          <div id="creatorRealtimeAuditResult" style="display: none;">
+            <!-- Dynamically populated -->
+          </div>
+
+          <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+            <button class="btn btn-primary" onclick="submitCreatorScriptDraft()">
+              🚀 Submit Script to boAt Marketing Team
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ========================================== -->
+  <!-- MODALS                                     -->
+  <!-- ========================================== -->
+
+  <!-- Influencer AI Evaluation Modal -->
+  <div class="modal-backdrop" id="modalAiEval">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <h2 id="modalEvalName">Influencer AI Evaluation Report</h2>
+          <p id="modalEvalHandle">@instagram_handle</p>
+        </div>
+        <button class="modal-close-btn" onclick="closeModal('modalAiEval')">✕</button>
+      </div>
+      <div class="modal-body" id="modalEvalBody">
+        <!-- Rendered dynamically -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('modalAiEval')">Close</button>
+        <button class="btn btn-danger btn-sm" id="btnModalReject" onclick="onModalStatusChange('Rejected')">Reject</button>
+        <button class="btn btn-primary" id="btnModalShortlist" onclick="onModalStatusChange('Shortlisted')">⭐ Shortlist Creator</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Campaign Creative Brief Modal -->
+  <div class="modal-backdrop" id="modalCampaignBrief">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <h2 id="modalBriefTitle">boAt Campaign Creative Brief</h2>
+          <p id="modalBriefProduct">Product Specifications & Guidelines</p>
+        </div>
+        <button class="modal-close-btn" onclick="closeModal('modalCampaignBrief')">✕</button>
+      </div>
+      <div class="modal-body" id="modalBriefBody">
+        <!-- Rendered dynamically -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('modalCampaignBrief')">Close</button>
+        <button class="btn btn-primary" onclick="copyBriefLink()">📋 Copy Brief Link</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- New Campaign Modal -->
+  <div class="modal-backdrop" id="modalNewCampaign">
+    <div class="modal-card" style="max-width: 650px;">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <h2>Create New boAt Campaign</h2>
+          <p>Configure product specs, creative mandatory points, and objectives.</p>
+        </div>
+        <button class="modal-close-btn" onclick="closeModal('modalNewCampaign')">✕</button>
+      </div>
+      <div class="modal-body">
+        <form id="newCampaignForm" onsubmit="handleCreateCampaignSubmit(event)">
+          <div class="form-grid">
+            <div class="form-group full-width">
+              <label class="form-label">Campaign Title *</label>
+              <input type="text" class="form-input" id="newCampTitle" required placeholder="e.g. boAt Airdopes Pro - Sound Unleashed">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Product Name *</label>
+              <input type="text" class="form-input" id="newCampProduct" required placeholder="e.g. boAt Airdopes 141 ANC">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Category *</label>
+              <select class="form-select" id="newCampCategory">
+                <option value="Audio / ANC">Audio / ANC</option>
+                <option value="Wearables / Fitness">Wearables / Fitness</option>
+                <option value="Gaming Audio">Gaming Audio</option>
+                <option value="Audio / Speakers">Audio / Speakers</option>
+                <option value="Lifestyle Tech">Lifestyle Tech</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Campaign Budget (₹) *</label>
+              <input type="number" class="form-input" id="newCampBudget" required placeholder="e.g. 1000000">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Target Audience</label>
+              <input type="text" class="form-input" id="newCampAudience" placeholder="e.g. Ages 18-28, College youth, Metro commuters">
+            </div>
+            <div class="form-group full-width">
+              <label class="form-label">Campaign Objective *</label>
+              <textarea class="form-textarea" id="newCampObjective" required style="height: 60px;" placeholder="Primary goal, e.g. Drive Diwali launch buzz and affiliate conversions for ANC earbuds under ₹2,500."></textarea>
+            </div>
+            <div class="form-group full-width">
+              <label class="form-label">Mandatory Communication Points (one per line)</label>
+              <textarea class="form-textarea" id="newCampMandatory" style="height: 80px;" placeholder="Show real 32dB ANC on/off&#10;Mention 100 Hours playback&#10;Include #DoWhatFloatsYourBoAt&#10;Call out Link in bio CTA"></textarea>
+            </div>
+          </div>
+          <div style="margin-top: 1.5rem; display: flex; justify-content: flex-end; gap: 0.75rem;">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('modalNewCampaign')">Cancel</button>
+            <button type="submit" class="btn btn-primary">Create Campaign</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom Message Outreach Modal -->
+  <div class="modal-backdrop" id="modalCustomMessage">
+    <div class="modal-card" style="max-width: 600px;">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <h2>Send Outreach / Notification</h2>
+          <p>Dispatches official message via Email and WhatsApp simulation.</p>
+        </div>
+        <button class="modal-close-btn" onclick="closeModal('modalCustomMessage')">✕</button>
+      </div>
+      <div class="modal-body">
+        <form id="customMessageForm" onsubmit="handleSendCustomMessage(event)">
+          <div class="form-group" style="margin-bottom: 1rem;">
+            <label class="form-label">Recipient Creator *</label>
+            <select class="form-select" id="msgRecipientSelect" required>
+              <!-- Dynamically populated -->
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom: 1rem;">
+            <label class="form-label">Channel</label>
+            <select class="form-select" id="msgChannelSelect">
+              <option value="Email & WhatsApp">Email & WhatsApp</option>
+              <option value="Email">Email Only</option>
+              <option value="WhatsApp">WhatsApp Only</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom: 1rem;">
+            <label class="form-label">Subject *</label>
+            <input type="text" class="form-input" id="msgSubjectInput" required placeholder="boAt Campaign Update">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Message Body *</label>
+            <textarea class="form-textarea" id="msgBodyInput" required style="height: 120px;" placeholder="Hi creator, we are excited to work with you on..."></textarea>
+          </div>
+          <div style="margin-top: 1.5rem; display: flex; justify-content: flex-end; gap: 0.75rem;">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('modalCustomMessage')">Cancel</button>
+            <button type="submit" class="btn btn-primary">Send Notification</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

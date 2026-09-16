@@ -1,0 +1,19 @@
+{
+  "name": "boat-influencer-crm",
+  "version": "1.0.0",
+  "description": "AI-Powered Influencer CRM & Campaign Automation for boAt",
+  "main": "server.js",
+  "scripts": {
+    "start": "node --experimental-sqlite server.js"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "keywords": [
+    "boat",
+    "influencer-crm",
+    "ai-automation"
+  ],
+  "author": "boAt Marketing Team",
+  "license": "MIT"
+}
